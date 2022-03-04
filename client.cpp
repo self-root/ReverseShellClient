@@ -25,7 +25,7 @@ Client::Client(QTcpSocket *parent)
 void Client::connectToServer()
 {
     connect(this, &QTcpSocket::readyRead, this, &Client::messageFromServer);
-    //connect(this, &QTcpSocket::connected, this, &Client::clientConnected);
+    connect(this, &QTcpSocket::disconnected, this, [](){QCoreApplication::exit();});
 
     //this->connectToHost("23.254.225.170", 9003);
     this->connectToHost("localhost", 9003);
@@ -50,10 +50,6 @@ void Client::cmdReceived(QJsonObject d)
     else if (program == "servcp")
     {
         sendFile(d.value("args").toString());
-    }
-    else if (program == "closeclient")
-    {
-        QCoreApplication::exit(0);
     }
     else
     {
