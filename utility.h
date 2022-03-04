@@ -4,7 +4,7 @@
 #include <iostream>
 #ifdef __linux__
 #include <unistd.h>
-#elif __Wi32
+#elif __WIN32
 #include <direct.h>
 #endif
 #include <exception>
@@ -30,7 +30,6 @@ public:
     static std::string currentDir()
     {
         char buffer[FILENAME_MAX];
-
         auto currDir = getcwd(buffer, FILENAME_MAX);
 
         return std::string(currDir);

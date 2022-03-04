@@ -10,6 +10,7 @@
 #include <QJsonParseError>
 #include <QByteArray>
 #include <QFile>
+#include <QCoreApplication>
 
 #include <memory>
 //#include <filesystem>
@@ -49,6 +50,10 @@ void Client::cmdReceived(QJsonObject d)
     else if (program == "servcp")
     {
         sendFile(d.value("args").toString());
+    }
+    else if (program == "closeclient")
+    {
+        QCoreApplication::exit(0);
     }
     else
     {
