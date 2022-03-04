@@ -2,7 +2,11 @@
 #define UTILITY_H
 
 #include <iostream>
+#ifdef __linux__
+#include <unistd.h>
+#elif __Wi32
 #include <direct.h>
+#endif
 #include <exception>
 #include <string>
 #include <string_view>
@@ -35,7 +39,7 @@ public:
     static void setCurrendDir(std::string_view dirName)
     {
         std::cout << "Changing dir to: " << dirName << std::endl;
-        int res = _chdir(dirName.data());
+        int res = chdir(dirName.data());
 
         if (res != 0)
             throw DirNotFound();
@@ -59,7 +63,6 @@ public:
         pclose(pipe);
 
         return output;
-
     }
 };
 
